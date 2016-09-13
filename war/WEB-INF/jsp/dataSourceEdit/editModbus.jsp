@@ -126,7 +126,7 @@
 	  DataSourceEditDwr.getPoint(-1, function(point) {
 		  editPointCB(point);
 	      $set("slaveId", $get("test_slaveId"));
-	      $set("range", $get("test_range"));
+	      $set("range", $get("test_rangce"));
 	      $set("modbusDataType", $get("test_modbusDataType"));
 	      $set("offset", $get("test_offset"));
 	      $set("bit", $get("test_bit"));

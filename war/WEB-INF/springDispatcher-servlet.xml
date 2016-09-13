@@ -222,7 +222,7 @@
 	<bean id="remoteControlController"
 		class="com.serotonin.mango.web.mvc.controller.RemoteControlController">
 		<property name="viewName">
-			<value>remoteControl</value>
+			<value>slavecmd/remoteControl</value>
 		</property>
 	</bean>
 	<bean id="appUsersController"

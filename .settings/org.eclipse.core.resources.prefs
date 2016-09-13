@@ -7,6 +7,7 @@ encoding//src_test/test/HttpTest.java=UTF-8
 encoding//war/WEB-INF/jsp=UTF-8
 encoding//war/WEB-INF/jsp/appUsers.jsp=UTF-8
 encoding//war/WEB-INF/jsp/portList.jsp=UTF-8
+encoding//war/WEB-INF/jsp/slavecmd/remoteControl.jsp=UTF-8
 encoding/<project>=UTF-8
 encoding/src=UTF-8
 encoding/src_test=UTF-8

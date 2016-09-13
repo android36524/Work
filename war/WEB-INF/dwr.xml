@@ -18,6 +18,7 @@
 			<param name="bundleBaseName">messages</param>
 		</filter>
 
+
 		<create creator="spring" javascript="CompoundEventsDwr">
 			<param name="beanName" value="CompoundEventsDwr" />
 			<filter
@@ -168,6 +169,12 @@
 			<param name="beanName" value="StatisticsDWR" />
 			<filter
 				class="com.serotonin.mango.web.dwr.util.LoggedInAjaxFilter" />
+		</create>
+		<create javascript="RemoteControlDwr" creator="spring">
+			<param name="beanName" value="RemoteControlDwr" />
+			<filter
+				class="com.serotonin.mango.web.dwr.util.LoggedInAjaxFilter" />
+		
 		</create>
 
 		<create creator="spring" javascript="ACPTypeAttrDwr">
@@ -396,6 +403,8 @@
 		</convert>
 		<!-- app -->
 		<convert match="com.serotonin.mango.vo.AppPoints" converter="bean"></convert>
+		
+		<convert match="com.serotonin.mango.vo.RemoteControlVO" converter="bean"></convert>
 	</allow>
 	<signatures>
 	<![CDATA[

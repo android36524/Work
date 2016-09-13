@@ -34,6 +34,8 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import jxl.Cell;
+import jxl.CellType;
+import jxl.NumberCell;
 import jxl.Sheet;
 import jxl.Workbook;
 
@@ -132,90 +134,12 @@ public class ScriptExecutor {
 						+ point.getDataTypeId());
 		}
 
+		// TODO 20160807 thl 流量计算
 		boolean ispd = script.contains("power density");
 		if (ispd) {
 
-			int istart = script.indexOf("PDSEARCH_START,");
-			int iend = script.indexOf(",PDSEARCH_END");
-			if (istart > 0 && iend > 0) {
-
-				String pdStr = script.substring(istart + 15, iend);
-				String[] pralist = pdStr.split(",");
-
-				// try {
-
-				// FileInputStream fis = new
-				// FileInputStream(Common.ctx.getEnergyCheck());
-				// Workbook rwb = Workbook.getWorkbook(fis);
-				// Sheet[] sheet = rwb.getSheets();
-				// if (sheet.length == 2) {
-				int ibar = 0;
-				int ikw = 0;
-				if (pralist.length == 3) {
-					Sheet rs;
-					if (pralist[0].equals("1")) {
-						rs = Common.ctx.getEnergyCheckWC();
-					} else {
-						rs = Common.ctx.getEnergyCheckAC();
-					}
-
-					IDataPoint pointbar = context.get(pralist[1]);
-					IDataPoint pointkw = context.get(pralist[2]);
-					double bar = 0;
-					int kw = 0;
-					if (pointbar != null && pointkw != null
-							&& pointbar.getPointValue() != null
-							&& pointkw.getPointValue() != null) {
-
-						double bartemp = pointbar.getPointValue()
-								.getDoubleValue();
-						double kwtemp = pointkw.getPointValue()
-								.getDoubleValue();
-						bar = new BigDecimal(bartemp).setScale(1,
-								BigDecimal.ROUND_HALF_UP).doubleValue();
-						kw = new BigDecimal(kwtemp).setScale(0,
-								BigDecimal.ROUND_HALF_UP).intValue();
-
-					}
-					if (rs.getRows() > 1) {
-						Cell[] row1 = rs.getRow(0);
-						for (int j = 1; j < row1.length; j++) {
-							String barstr = row1[j].getContents().trim();
-							if (!barstr.equals("")
-									&& bar == Double.valueOf(barstr)) {
-								ibar = j;
-								break;
-							}
-						}
-					}
-
-					if (rs.getColumns() > 1) {
-						Cell[] col1 = rs.getColumn(0);
-						for (int k = 1; k < col1.length; k++) {
-							String kwstr = col1[k].getContents().trim();
-							if (!kwstr.equals("")
-									&& Integer.valueOf(kwstr) == kw) {
-								ikw = k;
-								break;
-							}
-						}
-					}
-					String searchResult = "0";
-					if (ibar > 0 && ikw > 0) {
-						searchResult = rs.getCell(ibar, ikw).getContents();
-					}
-					// "PDSEARCH_START,1,p7768,p7770,PDSEARCH_END"
-					String aa = "\"PDSEARCH_START," + pdStr + ",PDSEARCH_END\"";
-					script = script.replace(aa, searchResult);
-					// System.out.print(searchResult);
-				}
-				// }
-				// fis.close();
-				// } catch (Exception e) {
-				// // TODO Auto-generated catch block
-				// e.printStackTrace();
-				// }
-			}
+			script = CheckEnergy(script, context);
+			script = CheckSwv(script, context);
 		}
 		// Create the script.
 		script = SCRIPT_PREFIX + script + SCRIPT_SUFFIX + FUNCTIONS;
@@ -318,5 +242,181 @@ public class ScriptExecutor {
 			}
 			FUNCTIONS = sw.toString();
 		}
+	}
+
+	private String CheckSwv(String script, Map<String, IDataPoint> context) {
+
+		int istart = script.indexOf("SWV_START,");
+		int iend = script.indexOf(",SWV_END");
+		if (istart > 0 && iend > 0) {
+			String pdStr = script.substring(istart + 10, iend);
+
+			String[] pralist = pdStr.split(",");
+			String searchResult = "0";
+
+			if (pralist.length == 3) {
+				if (pralist[0] != "" && pralist[1] != "") {
+
+					IDataPoint pointTemperature = context
+							.get(pralist[0].trim());
+					IDataPoint pointRelativeHumidity = context.get(pralist[1]
+							.trim());
+					IDataPoint pointPipeDiameter = context.get(pralist[2]
+							.trim());
+					if (pointTemperature != null
+							&& pointRelativeHumidity != null
+							&& pointPipeDiameter != null
+							&& pointTemperature.getPointValue() != null
+							&& pointRelativeHumidity.getPointValue() != null
+							&& pointPipeDiameter.getPointValue() != null) {
+
+						String temperature = String.valueOf(pointTemperature
+								.getPointValue().getDoubleValue());
+						String relativeHumidity = String
+								.valueOf(pointRelativeHumidity.getPointValue()
+										.getDoubleValue());
+						String pipeDiameter = String.valueOf(pointPipeDiameter
+								.getPointValue().getDoubleValue());
+
+						if (temperature != null) {
+
+							Sheet rs = Common.ctx.getEnergyCheckZQ();
+							int tmrow = getTemperateureRow(rs, temperature);
+							String ap = "0";
+							String vd = "0";
+							String ad = "0";
+							if (rs.getCell(1, tmrow).getType() == CellType.NUMBER) {
+								NumberCell numberCell = (NumberCell) rs
+										.getCell(1, tmrow);
+								double value = numberCell.getValue();
+								ap = value + "";
+							}
+
+							if (rs.getCell(2, tmrow).getType() == CellType.NUMBER) {
+								NumberCell numberCell = (NumberCell) rs
+										.getCell(2, tmrow);
+								double value = numberCell.getValue();
+								vd = value + "";
+							}
+							if (rs.getCell(3, tmrow).getType() == CellType.NUMBER) {
+								NumberCell numberCell = (NumberCell) rs
+										.getCell(3, tmrow);
+								double value = numberCell.getValue();
+								ad = value + "";
+							}
+
+							if (new BigDecimal(Double.valueOf(pipeDiameter))
+									.setScale(3, BigDecimal.ROUND_HALF_UP)
+									.doubleValue() == 0.205) {
+								searchResult = "(0.99-" + relativeHumidity
+										+ "/10000*" + ap + ")*" + ad + "+"
+										+ relativeHumidity + "/100*" + vd;
+							} else if (new BigDecimal(
+									Double.valueOf(pipeDiameter)).setScale(3,
+									BigDecimal.ROUND_HALF_UP).doubleValue() == 0.098) {
+								searchResult = "(0.98-" + relativeHumidity
+										+ "/10000*" + ap + ")*" + ad + "+"
+										+ relativeHumidity + "/100*" + vd;
+							}
+						}
+
+					}
+				}
+			}
+			// "PDSEARCH_START,1,p7768,p7770,PDSEARCH_END"
+			String aa = "\"SWV_START," + pdStr + ",SWV_END\"";
+			script = script.replace(aa, searchResult);
+		}
+		return script;
+	}
+
+	private String CheckEnergy(String script, Map<String, IDataPoint> context) {
+
+		int istart = script.indexOf("PDSEARCH_START,");
+		int iend = script.indexOf(",PDSEARCH_END");
+		if (istart > 0 && iend > 0) {
+
+			String pdStr = script.substring(istart + 15, iend);
+			String[] pralist = pdStr.split(",");
+
+			int ibar = 0;
+			int ikw = 0;
+			if (pralist.length == 3) {
+				Sheet rs;
+				if (pralist[0].equals("1")) {
+					rs = Common.ctx.getEnergyCheckWC();
+				} else {
+					rs = Common.ctx.getEnergyCheckAC();
+				}
+
+				IDataPoint pointbar = context.get(pralist[1]);
+				IDataPoint pointkw = context.get(pralist[2]);
+				double bar = 0;
+				int kw = 0;
+				if (pointbar != null && pointkw != null
+						&& pointbar.getPointValue() != null
+						&& pointkw.getPointValue() != null) {
+
+					double bartemp = pointbar.getPointValue().getDoubleValue();
+					double kwtemp = pointkw.getPointValue().getDoubleValue();
+					bar = new BigDecimal(bartemp).setScale(1,
+							BigDecimal.ROUND_HALF_UP).doubleValue();
+					kw = new BigDecimal(kwtemp).setScale(0,
+							BigDecimal.ROUND_HALF_UP).intValue();
+
+				}
+				if (rs.getRows() > 1) {
+					Cell[] row1 = rs.getRow(0);
+					for (int j = 1; j < row1.length; j++) {
+						String barstr = row1[j].getContents().trim();
+						if (!barstr.equals("") && bar == Double.valueOf(barstr)) {
+							ibar = j;
+							break;
+						}
+					}
+				}
+
+				if (rs.getColumns() > 1) {
+					Cell[] col1 = rs.getColumn(0);
+					for (int k = 1; k < col1.length; k++) {
+						String kwstr = col1[k].getContents().trim();
+						if (!kwstr.equals("") && Integer.valueOf(kwstr) == kw) {
+							ikw = k;
+							break;
+						}
+					}
+				}
+				String searchResult = "0";
+				if (ibar > 0 && ikw > 0) {
+					searchResult = rs.getCell(ibar, ikw).getContents();
+				}
+
+				// "PDSEARCH_START,1,p7768,p7770,PDSEARCH_END"
+				String aa = "\"PDSEARCH_START," + pdStr + ",PDSEARCH_END\"";
+				script = script.replace(aa, searchResult);
+			}
+		}
+		return script;
+	}
+
+	private int getTemperateureRow(Sheet rs, String temperature) {
+
+		int it = 0;
+		if (!temperature.trim().equals("")) {
+
+			if (rs.getColumns() > 1) {
+				Cell[] col1 = rs.getColumn(0);
+				for (int k = 3; k < col1.length; k++) {
+					String kwstr = col1[k].getContents().trim();
+					if (!kwstr.equals("")
+							&& Long.valueOf(kwstr) == Math.round(Double
+									.valueOf(temperature.trim()))) {
+						it = k;
+						break;
+					}
+				}
+			}
+		}
+		return it;
 	}
 }

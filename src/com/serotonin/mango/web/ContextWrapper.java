@@ -108,6 +108,10 @@ public class ContextWrapper {
 		return (Sheet) ctx.getAttribute(Common.ContextKeys.ENERGY_CHECK_WC);
 	}
 
+	public Sheet getEnergyCheckZQ() {
+		return (Sheet) ctx.getAttribute(Common.ContextKeys.ENERGY_CHECK_ZQ);
+	}
+
 	public RuntimeManager getRuntimeManager() {
 		return (RuntimeManager) ctx
 				.getAttribute(Common.ContextKeys.RUNTIME_MANAGER);

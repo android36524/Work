@@ -44,6 +44,8 @@
 	<bean id="TextRenderDwr" class="com.serotonin.mango.web.dwr.TextRenderDwr"></bean>
 	<!-- appsetting -->
 	<bean id="AppDatasourceSettingDwr" class="com.serotonin.mango.web.dwr.AppDatasourceSettingDwr"></bean>
+	<!-- RemoteControlDwr -->
+	<bean id="RemoteControlDwr" class="com.serotonin.mango.web.dwr.RemoteControlDwr"></bean>
 	<!-- i18n -->
 	<bean id="localeResolver"
 		class="org.springframework.web.servlet.i18n.SessionLocaleResolver" />

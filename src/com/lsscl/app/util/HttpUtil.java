@@ -35,7 +35,7 @@ public class HttpUtil {
 		conn.setDoOutput(true);
 		conn.setRequestProperty("Content-Type", "text/json; charset="+ encoding);//类型
 		conn.setRequestProperty("Content-Length", String.valueOf(data.length));
-		conn.setConnectTimeout(5 * 1000);
+		conn.setConnectTimeout(20 * 1000);
 		OutputStream outStream = conn.getOutputStream();
 		BufferedOutputStream bos = new BufferedOutputStream(outStream);
 		bos.write(data);
@@ -68,8 +68,8 @@ public class HttpUtil {
         String ret = null;
 		try {
 			// 设置连接超时参数
-			int timeOutConnection = 60 * 1000;
-			int timeOutSocket = 60 * 1000;
+			int timeOutConnection = 600 * 1000;
+			int timeOutSocket = 600 * 1000;
 			HttpParams params = new BasicHttpParams();
 			HttpConnectionParams
 					.setConnectionTimeout(params, timeOutConnection);

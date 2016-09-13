@@ -103,6 +103,7 @@ public class MangoContextListener implements ServletContextListener {
 		// reportsInitialize();
 		// maintenanceInitialize();
 		checkFileInitialize(ctx);
+		checkFile2Initialize(ctx);
 		// Notify the event manager of the startup.
 		SystemEventType.raiseEvent(new SystemEventType(
 				SystemEventType.TYPE_SYSTEM_STARTUP), System
@@ -110,6 +111,21 @@ public class MangoContextListener implements ServletContextListener {
 				"event.system.startup"));
 
 		log.info("Mango context started");
+	}
+
+	private void checkFile2Initialize(ServletContext ctx) {
+		// 20160807 thl add 蒸汽表增加
+
+		try {
+			File f = new File(ctx.getRealPath("饱和水蒸汽表.xls"));
+			FileInputStream fis = new FileInputStream(f);
+			Workbook rwb = Workbook.getWorkbook(fis);
+			ctx.setAttribute(Common.ContextKeys.ENERGY_CHECK_ZQ,
+					rwb.getSheet(0));
+			fis.close();
+		} catch (Exception e) {
+			log.error("Exception defining checkfile template directories", e);
+		}
 	}
 
 	public void contextDestroyed(ServletContextEvent evt) {

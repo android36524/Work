@@ -26,14 +26,19 @@ public class PointsIn24HDao extends AppDao{
 		List<PointValueTime> pvts = pointValueDao.getPointValuesBetween(pointId, gt, le);
 		long t2 = System.currentTimeMillis();
 		System.out.println("点查询时间："+(t2-t1));
-		String unit = getUnitByPid(pointId);
+		//String unit = getUnitByPid(pointId);
+		//t2 = System.currentTimeMillis();
+		//System.out.println("unit查询时间："+(t2-t1));
 		PointsWithin24MsgBody msgBody = new PointsWithin24MsgBody();
 		msgBody.setTitle("");
 		msgBody.setStime(gt);
-		msgBody.setSubTitle(unit);
+		//msgBody.setSubTitle(unit);
+
 		msgBody.setPoints(pvts);
 		msgBody.setImageType(qc.getMsgBody().get("IMGTYPE"));
 		rsp.setMsgBody(msgBody);
+
+		System.out.println("msgBody："+msgBody);
 		return rsp;
 	}
 	

@@ -16,343 +16,331 @@
      
      
 --%>
-<%@ include file="/WEB-INF/jsp/include/tech.jsp" %>
+<%@ include file="/WEB-INF/jsp/include/tech.jsp"%>
 <%@page import="com.serotonin.modbus4j.code.RegisterRange"%>
 <%@page import="com.serotonin.modbus4j.code.DataType"%>
+<%@page import="com.serotonin.mango.Common"%>
 
-<script type="text/javascript">
-  function initImpl() {
-      scanButtons(false);
-      changeRange('test_');
-  }
-  
-  function scan() {
-      $set("scanMessage", "<fmt:message key="dsEdit.modbus.startScan"/>");
-      dwr.util.removeAllOptions("scanNodes");
-      scanButtons(true);
-      scanImpl();
-  }
-  
-  function scanCB(msg) {
-      if (msg)
-          alert(msg);
-      else
-          setTimeout(scanUpdate, 1000);
-  }
+<tag:page dwr="RemoteControlDwr" onload="init">
+	<script>
+		var currentPoint;
 
-  function scanUpdate() {
-      DataSourceEditDwr.modbusScanUpdate(scanUpdateCB);
-  }
-  
-  function scanUpdateCB(result) {
-      if (result) {
-          $set("scanMessage", result.message);
-          dwr.util.removeAllOptions("scanNodes");
-          dwr.util.addOptions("scanNodes", result.nodes);
-          if (!result.finished)
-              scanCB();
-          else
-              scanButtons(false);
-      }
-  }
-  
-  function scanCancel() {
-      DataSourceEditDwr.cancelTestingUtility(scanButtons);
-  }
-  
-  function scanButtons(scanning) {
-      setDisabled("scanBtn", scanning);
-      setDisabled("scanCancelBtn", !scanning);
-  }
-  
-  function locatorTest() {
-      setDisabled("locatorTestBtn", true);
-      
-      var locator = {};
-      locator.slaveId = $get("test_slaveId");
-      locator.range = $get("test_range");
-      locator.modbusDataType = $get("test_modbusDataType");
-      locator.offset = $get("test_offset");
-      locator.bit = $get("test_bit");
-      locator.registerCount = $get("test_registerCount");
-      locator.charset = $get("test_charset");
-      
-      locatorTestImpl(locator);
-  }
-  
-  function locatorTestCB(response) {
-      hideContextualMessages("locatorTestDiv");
-      hideGenericMessages("locatorTestGeneric");
-      if (response.hasMessages) {
-          // Add the prefix to the contextual messages.
-          for (var i=0; i<response.messages.length; i++) {
-              if (response.messages[i].contextKey)
-                  response.messages[i].contextKey = "test_"+ response.messages[i].contextKey;
-          }
-          showDwrMessages(response.messages, "locatorTestGeneric");
-          $set("locatorTestResult");
-      }
-      else
-          $set("locatorTestResult", response.data.result);
-      setDisabled("locatorTestBtn", false);
-  }
-  
-  function dataTest() {
-      setDisabled("dataTestBtn", true);
-      dataTestImpl($get("dataTest_slaveId"), $get("dataTest_range"), $get("dataTest_offset"), $get("dataTest_length"));
-      hideGenericMessages("dataTestGeneric");
-  }
-  
-  function dataTestCB(response) {
-	  if (response.data.length)
-		  $set("dataTest_length", response.data.length);
-	  
-      if (response.hasMessages) {
-          showDwrMessages(response.messages, "dataTestGeneric");
-          hide("dataTestResults");
-      }
-      else {
-    	  var results = "";
-    	  for (var i=0; i<response.data.results.length; i++)
-    		  results += response.data.results[i] +"<br/>";
-          $set("dataTestResults", results);
-          show("dataTestResults");
-      }
+		function init() {
 
-      setDisabled("dataTestBtn", false);
-  }
-  
-  function addPointImpl() {
-	  DataSourceEditDwr.getPoint(-1, function(point) {
-		  editPointCB(point);
-	      $set("slaveId", $get("test_slaveId"));
-	      $set("range", $get("test_range"));
-	      $set("modbusDataType", $get("test_modbusDataType"));
-	      $set("offset", $get("test_offset"));
-	      $set("bit", $get("test_bit"));
-	      $set("registerCount", $get("test_registerCount"));
-	      $set("charset", $get("test_charset"));
-          changeRange('');
-	  });
-  }
-  
-  function appendPointListColumnFunctions(pointListColumnHeaders, pointListColumnFunctions) {
-      pointListColumnHeaders[pointListColumnHeaders.length] = "<fmt:message key="dsEdit.modbus.slave"/>";
-      pointListColumnFunctions[pointListColumnFunctions.length] = function(p) { return p.pointLocator.slaveId; };
-      
-      pointListColumnHeaders[pointListColumnHeaders.length] = "<fmt:message key="dsEdit.modbus.range"/>";
-      pointListColumnFunctions[pointListColumnFunctions.length] = function(p) {
-          if (p.pointLocator.slaveMonitor)
-              return "<fmt:message key="dsEdit.modbus.slaveMonitor"/>";
-          return p.pointLocator.rangeMessage;
-      };
-      
-      pointListColumnHeaders[pointListColumnHeaders.length] = "<fmt:message key="dsEdit.modbus.offset"/>";
-      pointListColumnFunctions[pointListColumnFunctions.length] = function(p) {
-    	  if (p.pointLocator.slaveMonitor)
-    		  return "";
-    	  if (isBinary('', p.pointLocator.modbusDataType) && !isBinaryRange('', p.pointLocator.range))
-              return p.pointLocator.offset +'/'+ p.pointLocator.bit;
-    	  return p.pointLocator.offset;
-  	  };
-  }
-  
-  function editPointCBImpl(locator) {
-      $set("slaveId", locator.slaveId);
-      $set("range", locator.range);
-      $set("modbusDataType", locator.modbusDataType);
-      $set("offset", locator.offset);
-      $set("bit", locator.bit);
-      $set("registerCount", locator.registerCount);
-      $set("charset", locator.charset);
-      $set("settableOverride", locator.settableOverride);
-      $set("multiplier", locator.multiplier);
-      $set("additive", locator.additive);
+			if ($("scopeId").value == "")
+				return;
+       		writePointList();
 
-      if (locator.slaveMonitor) {
-          hide("nonSlaveMonitor");
-          setDisabled("slaveId", true);
-      }
-      else {
-          setDisabled("slaveId", false);
-          show("nonSlaveMonitor");
-          changeRange('');
-      }
-  }
-  
+		}
+		function setPointList(response){
+			var pointsList = $("pointsList");
+			pointsList.innerHTML = "";
+			var points = response.data.points;
+			for (var i = 0; i < points.length; i++) {
+				var point = points[i];
+				var tr = document.createElement("tr"), tdPointName = document
+						.createElement("td"), tdOffset = document
+						.createElement("td"), tdtog = document
+						.createElement("td"), tdEdit = document
+						.createElement("td");
+				tr.className = "row";
+				tdPointName.innerHTML = point.pointName;
+				tdOffset.innerHTML = point.offset;
+				tdtog.innerHTML = '<img class="ptr" id="toggleImg'
+						+ point.pointID
+						+ '" src="images/brick_stop.png" onclick="togglePoint('
+						+ point.pointID + ')">';
+				tdEdit.innerHTML = '<a href="#" onclick="editPoint('
+						+ point.pointID
+						+ ')" class="editImg"><tag:img png="icon_ds_edit"
+                         title="common.edit" id="editImg'+point.pointID+'"/></a>';
+				tr.appendChild(tdPointName);
+				tr.appendChild(tdOffset);
+				tr.appendChild(tdtog);
+				tr.appendChild(tdEdit);
+				pointsList.appendChild(tr);
+			}
+		
+		}
+
+		function editPoint(pointId) {
+			if (currentPoint)
+				stopImageFader("editImg" + currentPoint.pointID);
+			RemoteControlDwr.getPointDetailById(pointId, editPointCB);
+			//hideContextualMessages("pointDetails");
+		}
+
+		function editPointCB(response) {
+			currentPoint = response.data.point;
+        	display("pointDeleteImg", currentPoint.pointID != <c:out value="<%= Common.NEW_ID %>"/>);
+			$set("pointName", currentPoint.pointName);
+			$set("offset", currentPoint.offset);
+			$set("modbusDataType", currentPoint.dataType);			
+       		jQuery("#dsid").val(currentPoint.dsid);		
+       		jQuery("#modbusDataType").val(currentPoint.dataType);
+			$set("bit", currentPoint.bit);
+			$set("settingValue", currentPoint.settingValue);
+			startImageFader("editImg"+ currentPoint.pointID);
+			show("pointDetails");
+			changeDataType('');
+		}
+		function togglePoint(pointId) {
+		
+        	$("toggleImg"+pointId).src="images/brick_go.png";
+			startImageFader("toggleImg" + pointId, true);
+			if (confirm("<fmt:message key="remote.control.Confirm"/>")) {
+				RemoteControlDwr.rendRemoteCommand(pointId, togglePointCB);
+			}else {
+        		$("toggleImg"+pointId).src="images/brick_stop.png";		
+				stopImageFader("toggleImg"+ pointId);
+			}
+		}
+		
+		function togglePointCB(response) {
+		
+			if (response.hasMessages) {
+				alert(response.messages[0].genericMessage);
+			} else {
+				alert("<fmt:message key="remote.control.result"/>");
+			}
+        	$("toggleImg"+response.data.id).src="images/brick_stop.png";		
+			stopImageFader("toggleImg"+ response.data.id);
+		}
+		
+		
+	    function deletePoint() {
+	        if (confirm("<fmt:message key="dsEdit.deleteConfirm"/>")) {
+	            RemoteControlDwr.deletePoint(currentPoint.pointID, deletePointCB);
+	            startImageFader("pointDeleteImg", true);
+	        }
+	    }
+	    
+	    function deletePointCB(points) {
+	        stopImageFader("pointDeleteImg");
+	        hide("pointDetails");
+	        currentPoint = null;
+	        writePointList();
+	    }
+		
+	    function writePointList() {
+	        dwr.util.removeAllRows("pointsList");        
+			RemoteControlDwr.getPointsByScopeId($("scopeId").value,setPointList);
+	    }
+
+    function savePoint() {
+        startImageFader("pointSaveImg", true);
+        hideContextualMessages("pointProperties");
+        var locator = currentPoint;
+        savePointImpl(locator);
+    }
+    
   function savePointImpl(locator) {
-      delete locator.settable;
-      delete locator.rangeMessage;
-      delete locator.dataTypeId;
-      delete locator.relinquishable;
-      
-      locator.slaveId = $get("slaveId");
-      locator.range = $get("range");
-      locator.modbusDataType = $get("modbusDataType");
+  
+      locator.scopeid = $get("scopeId");
+      locator.pointName = $get("pointName");
+      locator.dataType = $get("modbusDataType");
       locator.offset = $get("offset");
+      locator.settingValue= $get("settingValue");
       if(parseInt($get("offset"))>65535){
       	showMessage("pointMessage", "<fmt:message key='dsEdit.point.offset.validation'/>");
       	return;
       }      
+      locator.dsid= $get("dsid");
       locator.bit = $get("bit");
-      locator.registerCount = $get("registerCount");
-      locator.charset = $get("charset");
-      locator.settableOverride = $get("settableOverride");
-      locator.multiplier = $get("multiplier");
-      locator.additive = $get("additive");
-      DataSourceEditDwr.saveModbusPointLocator(currentPoint.id, $get("xid"), $get("name"), locator, savePointCB);
-  }
-  
-  function changeRange(prefix) {
-      if (isBinaryRange(prefix)) {
-          $set(prefix +"modbusDataType", "<c:out value="<%= DataType.BINARY %>"/>");
-          setDisabled(prefix +"modbusDataType", true);
-      }
-      else
-          setDisabled(prefix +"modbusDataType", false);
-      changeDataType(prefix);
       
-      var rangeId = $get(prefix +"range");
-      if (rangeId == "<c:out value="<%= RegisterRange.COIL_STATUS %>"/>" || rangeId == "<c:out value="<%= RegisterRange.HOLDING_REGISTER %>"/>"|| rangeId == "<c:out value="<%= RegisterRange.HOLDING_REGISTER_88 %>"/>")
-          maybeSetDisabled(prefix +"settableOverride", false);
-      else {
-    	  maybeSetDisabled(prefix +"settableOverride", true);
-          $set(prefix +"settableOverride", false);
-      }
+      RemoteControlDwr.savePoint(locator.pointID, locator.pointName,locator.offset, locator.scopeid,locator.settingValue ,locator.dsid,locator.dataType
+      ,locator.bit,savePointCB);
   }
   
-  function isBinary(prefix, dt) {
-	  if (!dt)
+    function savePointCB(response) {
+        stopImageFader("pointSaveImg");
+        if (response.hasMessages)
+            showDwrMessages(response.messages);
+        else {
+            writePointList();
+            if (response.data.id==<c:out value="<%= Common.NEW_ID %>"/>) { 
+            	hide("pointDetails");            	
+				stopImageFader("editImg" + response.data.id);
+            }
+            showMessage("pointMessage", "<fmt:message key="dsEdit.pointSaved"/>");
+        }
+    }
+    
+    
+		
+		function isBinary(prefix, dt) {
+		 if (!dt)
 		  dt = $get(prefix +"modbusDataType");
-      return dt == "<c:out value="<%= DataType.BINARY %>"/>";
-  }
-  
-  function isBinaryRange(prefix, r) {
-	  if (!r)
-	      r = $get(prefix +"range");
-      return r == "<c:out value="<%= RegisterRange.COIL_STATUS %>"/>" || r == "<c:out value="<%= RegisterRange.INPUT_STATUS %>"/>";
-  }
-  
-  function isString(prefix) {
-	  var dt = $get(prefix +"modbusDataType");
-      return dt == "<c:out value="<%= DataType.CHAR %>"/>" || dt == "<c:out value="<%= DataType.VARCHAR %>"/>";
-  }
-  
-  function changeDataType(prefix) {
-	  if (isBinary(prefix)) {
-          setDisabled(prefix +"bit", isBinaryRange(prefix));
-          setDisabled(prefix +"registerCount", true);
-          setDisabled(prefix +"charset", true);
-          maybeSetDisabled(prefix +"multiplier", true);
-          maybeSetDisabled(prefix +"additive", true);
-	  }
-	  else if (isString(prefix)) {
-          setDisabled(prefix +"bit", true);
-          setDisabled(prefix +"registerCount", false);
-          setDisabled(prefix +"charset", false);
-          maybeSetDisabled(prefix +"multiplier", true);
-          maybeSetDisabled(prefix +"additive", true);
-	  }
-	  else {
-          setDisabled(prefix +"bit", true);
-          setDisabled(prefix +"registerCount", true);
-          setDisabled(prefix +"charset", true);
-          maybeSetDisabled(prefix +"multiplier", false);
-          maybeSetDisabled(prefix +"additive", false);
-	  }
-  }
-  
-  function maybeSetDisabled(nodeName, val) {
-	  var node = $(nodeName);
-	  if (node)
-		  setDisabled(node, val);
-  }
-</script>
+		    return dt == "<c:out value="<%= DataType.BINARY %>"/>";
+		}  
+		
+		function isString(prefix) {
+		 var dt = $get(prefix +"modbusDataType");
+		    return dt == "<c:out value="<%= DataType.CHAR %>"/>" || dt == "<c:out value="<%= DataType.VARCHAR %>"/>";
+		}
+
+		function changeDataType(prefix) {
+			if (isBinary(prefix)) {
+				setDisabled("bit", false);
+			} else if (isString(prefix)) {
+				setDisabled("bit", true);
+			} else {
+				setDisabled("bit", true);
+			}
+		}
+	</script>
+
+	<table cellpadding="0" cellspacing="0" id="pointProperties">
+		<tbody>
+			<tr>
+				<td valign="top">
+					<div class="borderDiv marR marB">
+						<table width="100%">
+							<tbody>
+								<tr>
+									<td class="smallTitle"><fmt:message
+											key="remote.control.title" /></td>
+									<td align="right"><tag:img
+											id="editImg${applicationScope['constants.Common.NEW_ID']}"
+											png="icon_comp_add"
+											onclick="editPoint(${applicationScope['constants.Common.NEW_ID']})" />
+									</td>
+								</tr>
+							</tbody>
+						</table>
+						<table cellspacing="1">
+							<tbody>
+								<tr class="rowHeader" id="pointListHeaders">
+									<td><fmt:message key="remote.control.setting.pointname" /></td>
+									<td><fmt:message key="remote.control.setting.offset" /></td>
+									<td><fmt:message key="remote.control" /></td>
+									<td><fmt:message key="common.edit" /></td>
+								</tr>
+							</tbody>
+							<tbody id="pointsList">
+							</tbody>
+						</table>
+					</div>
+				</td>
+				<td valign="top">
+					<div id="pointDetails" class="borderDiv marR marB"
+						style="display: none;">
+						<table>
+							<tr>
+								<td><span class="smallTitle"><fmt:message
+											key="dsEdit.points.details" /></span> <tag:help id="${pointHelpId}" />
+								</td>
+								<td align="right"><tag:img id="pointSaveImg" png="save"
+										onclick="savePoint()" title="common.save" /> <tag:img
+										id="pointDeleteImg" png="delete" onclick="deletePoint()"
+										title="common.delete" /></td>
+							</tr>
+						</table>
+						<div id="pointMessage" class="ctxmsg formError"></div>
+
+						<table>
+							<tr>
+								<td class="formLabelRequired"><fmt:message
+										key="common.access.dataSource" /></td>
+								<td class="formField"><select id="dsid">
+										<c:forEach items="${dataSources}" var="dataSource">
+											<option value="${dataSource.id}">${dataSource.name}-(<fmt:message
+													key="${dataSource.type.key}" />)
+											</option>
+										</c:forEach>
+								</select></td>
+							</tr>
+							<tr>
+								<td class="formLabelRequired"><fmt:message
+										key="dsEdit.points.name" /></td>
+								<td class="formField"><input type="text" id="pointName" /></td>
+							</tr>
+
+							<tbody id="nonSlaveMonitor">
+
+								<tr>
+									<td class="formLabelRequired"><fmt:message
+											key="dsEdit.modbus.modbusDataType" /></td>
+									<td class="formField"><select id="modbusDataType"
+										onchange="changeDataType('')">
+											<option value="<c:out value="<%=DataType.BINARY%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.binary" /></option>
+											<option
+												value="<c:out value="<%=DataType.TWO_BYTE_INT_UNSIGNED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.2bUnsigned" /></option>
+											<option
+												value="<c:out value="<%=DataType.TWO_BYTE_INT_SIGNED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.2bSigned" /></option>
+											<option value="<c:out value="<%=DataType.TWO_BYTE_BCD%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.2bBcd" /></option>
+											<option
+												value="<c:out value="<%=DataType.FOUR_BYTE_INT_UNSIGNED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.4bUnsigned" /></option>
+											<option
+												value="<c:out value="<%=DataType.FOUR_BYTE_INT_SIGNED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.4bSigned" /></option>
+											<option
+												value="<c:out value="<%=DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.4bUnsignedSwapped" /></option>
+											<option
+												value="<c:out value="<%=DataType.FOUR_BYTE_INT_SIGNED_SWAPPED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.4bSignedSwapped" /></option>
+											<option
+												value="<c:out value="<%=DataType.FOUR_BYTE_FLOAT%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.4bFloat" /></option>
+											<option
+												value="<c:out value="<%=DataType.FOUR_BYTE_FLOAT_SWAPPED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.4bFloatSwapped" /></option>
+											<option value="<c:out value="<%=DataType.FOUR_BYTE_BCD%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.4bBcd" /></option>
+											<option
+												value="<c:out value="<%=DataType.EIGHT_BYTE_INT_UNSIGNED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.8bUnsigned" /></option>
+											<option
+												value="<c:out value="<%=DataType.EIGHT_BYTE_INT_SIGNED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.8bSigned" /></option>
+											<option
+												value="<c:out value="<%=DataType.EIGHT_BYTE_INT_UNSIGNED_SWAPPED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.8bUnsignedSwapped" /></option>
+											<option
+												value="<c:out value="<%=DataType.EIGHT_BYTE_INT_SIGNED_SWAPPED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.8bSignedSwapped" /></option>
+											<option
+												value="<c:out value="<%=DataType.EIGHT_BYTE_FLOAT%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.8bFloat" /></option>
+											<option
+												value="<c:out value="<%=DataType.EIGHT_BYTE_FLOAT_SWAPPED%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.8bFloatSwapped" /></option>
+											<option value="<c:out value="<%=DataType.CHAR%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.char" /></option>
+											<option value="<c:out value="<%=DataType.VARCHAR%>"/>"><fmt:message
+													key="dsEdit.modbus.modbusDataType.varchar" /></option>
+									</select></td>
+								</tr>
+
+								<tr>
+									<td class="formLabelRequired"><fmt:message
+											key="remote.control.setting.settingValue" /></td>
+									<td class="formField"><input id="settingValue" type="text" /></td>
+								</tr>
+								<tr>
+									<td class="formLabelRequired"><fmt:message
+											key="dsEdit.modbus.offset" /></td>
+									<td class="formField"><input type="text" id="offset" /></td>
+								</tr>
+
+								<tr>
+									<td class="formLabelRequired"><fmt:message
+											key="dsEdit.modbus.bit" /></td>
+									<td class="formField"><input id="bit" type="text" /></td>
+								</tr>
+							</tbody>
+						</table>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</tag:page>
 
 
-<%@ include file="/WEB-INF/jsp/dataSourceEdit/dsHead.jspf" %>
-<%@ include file="/WEB-INF/jsp/dataSourceEdit/dsFoot.jspf" %>
-
-<tag:pointList pointHelpId="modbusPP">
-  <tr>
-    <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.slaveId"/></td>
-    <td class="formField"><input type="text" id="slaveId"/></td>
-  </tr>
-  
-  <tbody id="nonSlaveMonitor">
-    <tr>
-      <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.registerRange"/></td>
-      <td class="formField">
-        <select id="range" onchange="changeRange('')">
-          <option value="<c:out value="<%= RegisterRange.COIL_STATUS %>"/>"><fmt:message key="dsEdit.modbus.coilStatus"/></option>
-          <option value="<c:out value="<%= RegisterRange.INPUT_STATUS %>"/>"><fmt:message key="dsEdit.modbus.inputStatus"/></option>
-          <option value="<c:out value="<%= RegisterRange.HOLDING_REGISTER %>"/>"><fmt:message key="dsEdit.modbus.holdingRegister"/></option>
-          <option value="<c:out value="<%= RegisterRange.INPUT_REGISTER %>"/>"><fmt:message key="dsEdit.modbus.inputRegister"/></option>
-          <option value="<c:out value="<%= RegisterRange.HOLDING_REGISTER_88 %>"/>"><fmt:message key="dsEdit.modbus.holdingRegister_88"/></option>
-        </select>
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.modbusDataType"/></td>
-      <td class="formField">
-        <select id="modbusDataType" onchange="changeDataType('')">
-          <option value="<c:out value="<%= DataType.BINARY %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.binary"/></option>
-          <option value="<c:out value="<%= DataType.TWO_BYTE_INT_UNSIGNED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.2bUnsigned"/></option>
-          <option value="<c:out value="<%= DataType.TWO_BYTE_INT_SIGNED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.2bSigned"/></option>
-          <option value="<c:out value="<%= DataType.TWO_BYTE_BCD %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.2bBcd"/></option>
-          <option value="<c:out value="<%= DataType.FOUR_BYTE_INT_UNSIGNED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.4bUnsigned"/></option>
-          <option value="<c:out value="<%= DataType.FOUR_BYTE_INT_SIGNED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.4bSigned"/></option>
-          <option value="<c:out value="<%= DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.4bUnsignedSwapped"/></option>
-          <option value="<c:out value="<%= DataType.FOUR_BYTE_INT_SIGNED_SWAPPED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.4bSignedSwapped"/></option>
-          <option value="<c:out value="<%= DataType.FOUR_BYTE_FLOAT %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.4bFloat"/></option>
-          <option value="<c:out value="<%= DataType.FOUR_BYTE_FLOAT_SWAPPED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.4bFloatSwapped"/></option>
-          <option value="<c:out value="<%= DataType.FOUR_BYTE_BCD %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.4bBcd"/></option>
-          <option value="<c:out value="<%= DataType.EIGHT_BYTE_INT_UNSIGNED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.8bUnsigned"/></option>
-          <option value="<c:out value="<%= DataType.EIGHT_BYTE_INT_SIGNED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.8bSigned"/></option>
-          <option value="<c:out value="<%= DataType.EIGHT_BYTE_INT_UNSIGNED_SWAPPED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.8bUnsignedSwapped"/></option>
-          <option value="<c:out value="<%= DataType.EIGHT_BYTE_INT_SIGNED_SWAPPED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.8bSignedSwapped"/></option>
-          <option value="<c:out value="<%= DataType.EIGHT_BYTE_FLOAT %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.8bFloat"/></option>
-          <option value="<c:out value="<%= DataType.EIGHT_BYTE_FLOAT_SWAPPED %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.8bFloatSwapped"/></option>
-          <option value="<c:out value="<%= DataType.CHAR %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.char"/></option>
-          <option value="<c:out value="<%= DataType.VARCHAR %>"/>"><fmt:message key="dsEdit.modbus.modbusDataType.varchar"/></option>
-        </select>
-      </td>
-    </tr>
-    
-    <tr>
-      <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.offset"/></td>
-      <td class="formField"><input type="text" id="offset"/></td>
-    </tr>
-    
-    <tr>
-      <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.bit"/></td>
-      <td class="formField"><input id="bit" type="text"/></td>
-    </tr>
-    
-    <tr>
-      <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.registerCount"/></td>
-      <td class="formField"><input id="registerCount" type="text"/></td>
-    </tr>
-    
-    <tr>
-      <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.charset"/></td>
-      <td class="formField"><input id="charset" type="text"/></td>
-    </tr>
-    
-    <tr>
-      <td class="formLabelRequired"><fmt:message key="dsEdit.modbus.settableOverride"/></td>
-      <td class="formField"><input id="settableOverride" type="checkbox"/></td>
-    </tr>
-    
-    <tr>
-      <td class="formLabel"><fmt:message key="dsEdit.modbus.multiplier"/></td>
-      <td class="formField"><input type="text" id="multiplier"/></td>
-    </tr>
-    
-    <tr>
-      <td class="formLabel"><fmt:message key="dsEdit.modbus.additive"/></td>
-      <td class="formField"><input type="text" id="additive"/></td>
-    </tr>
-  </tbody>
-</tag:pointList>
+<input type="hidden" id="scopeId" value="${scopeid}">
